@@ -7,7 +7,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.forms import UserCreationForm
 from .models import Room, Topic, Message
-from .forms import RoomForm
+from .forms import RoomForm, UserForm
 
 # Create your views here.
 
@@ -66,7 +66,7 @@ def home(request):
     
     room_count = rooms.count()
     room_messages = Message.objects.filter(Q(room__topic__name__icontains=q))
-    topics = Topic.objects.all()
+    topics = Topic.objects.all()[0:5]
     
     context = {'rooms': rooms,'topics': topics, 'room_count': room_count, 'room_messages':room_messages}
     return render(request,'base/home.html', context)
@@ -98,13 +98,25 @@ def userProfile(request, pk):
 @login_required(login_url='login')
 def createRoom(request):
     form = RoomForm()
+    topics = Topic.objects.all()
     if request.method == 'POST':
-        form = RoomForm(request.POST)
-        if form.is_valid():
-            form.save()
-            return redirect('home')
+        topic_name = request.POST.get('topic')
+        topic, create = Topic.objects.get_or_create(name=topic_name)
         
-    context = {'form': form}
+        Room.objects.create(
+            host = request.user,
+            topic = topic,
+            name = request.POST.get('name'),
+            description = request.POST.get('description')
+        )
+        return redirect('home')
+        # form = RoomForm(request.POST)
+        # if form.is_valid():
+            # room = form.save(commit=False)
+            # room.host = request.user
+            # room.save()
+        
+    context = {'form': form, 'topics': topics}
     return render(request,'base/room_form.html', context)
 
 @login_required(login_url='login')
@@ -116,12 +128,19 @@ def updateRoom(request, pk):
         return HttpResponse('Your not allowed here!')
         
     if request.method == 'POST':
-        form = RoomForm(request.POST, instance=room)
-        if form.is_valid():
-            form.save()
-            return redirect('home')
+        topic_name = request.POST.get('topic')
+        topic, create = Topic.objects.get_or_create(name=topic_name)
+        room.name = request.POST.get('name')
+        room.topic = topic
+        room.description = request.POST.get('description')
+        room.save()
+        return redirect('home')
+        # form = RoomForm(request.POST, instance=room)
+        # if form.is_valid():
+        #     form.save()
+        #     return redirect('home')
     
-    context = {'form': form}
+    context = {'form': form, 'room':room}
     return render(request,'base/room_form.html', context)
 
 @login_required(login_url='login')
@@ -138,7 +157,6 @@ def deleteRoom(request,pk):
     context = {'obj': room}
     return render(request,'base/delete.html', context)
 
-
 @login_required(login_url='login')
 def deleteMessage(request,pk):
     message = Message.objects.get(id=pk)
@@ -152,3 +170,32 @@ def deleteMessage(request,pk):
     
     context = {'obj': message}
     return render(request,'base/delete.html', context)
+
+@login_required(login_url='login')
+def updateUser(request, pk):
+    user = request.user
+    form = UserForm(instance=request.user)
+    
+    if request.method == 'POST':
+        form = UserForm(request.POST, instance=user)
+        if form.is_valid():
+            form.save()
+            return redirect('profile', pk=user.id)
+    
+    context = {'user': user, 'form': form}
+    return render(request, 'base/update_user.html',context)
+
+def topicsPage(request):
+    q = request.GET.get('q') if request.GET.get('q') != None else ''
+    topics = Topic.objects.filter(Q(name__icontains=q))
+    context = {'topics': topics}
+    return render(request, 'base/topics.html',context)
+
+def activityPage(request):
+    q = request.GET.get('q') if request.GET.get('q') != None else ''
+    room_messages = Message.objects.filter(
+        Q(body__icontains=q) | 
+        Q(room__name__icontains=q)
+    )
+    context = {'room_messages': room_messages}
+    return render(request, 'base/activity.html',context)
