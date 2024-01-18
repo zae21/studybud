@@ -44,6 +44,8 @@ INSTALLED_APPS = [
     'corsheaders'
 ]
 
+AUTH_USER_MODEL = 'base.User'
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -79,7 +81,6 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'studybud.wsgi.application'
-
 
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
@@ -127,10 +128,13 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
 STATIC_URL = 'static/'
+MEDIA_DIR = '/images/'
 
 STATICFILES_DIRS = [
     BASE_DIR / 'static'
 ]
+
+MEDIA_ROOT = BASE_DIR / 'static/images'
 
 # STATIC_ROOT = 
 
